@@ -88,6 +88,46 @@ def search_students_by_name(name_part):
     finally:
         conn.close()
 
+def update_student(roll_no, new_course=None, new_marks=None):
+    """Update course and/or marks for a student with given roll number."""
+    if new_course is None and new_marks is None:
+        print("Nothing to update.")
+        return
+    conn = create_connection()
+    cur = conn.cursor()
+    try:
+        if new_course is not None and new_marks is not None:
+            cur.execute("UPDATE students SET course = ?, marks = ? WHERE roll_no = ?", (new_course, new_marks, roll_no))
+        elif new_course is not None:
+            cur.execute("UPDATE students SET course = ? WHERE roll_no = ?", (new_course, roll_no))
+        elif new_marks is not None:
+            cur.execute("UPDATE students SET marks = ? WHERE roll_no = ?", (new_marks, roll_no))
+        conn.commit()
+        if cur.rowcount == 0:
+            print("❌ No student found with that roll number.")
+        else:
+            print("✅ Student updated successfully.")
+    except Exception as e:
+        print("❌ Error updating student:", e)
+    finally:
+        conn.close()
+
+def delete_student(roll_no):
+    """Delete a student by roll number after confirmation."""
+    conn = create_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("DELETE FROM students WHERE roll_no = ?", (roll_no,))
+        conn.commit()
+        if cur.rowcount == 0:
+            print("❌ No student found with that roll number.")
+        else:
+            print("🗑️ Student deleted.")
+    except Exception as e:
+        print("❌ Error deleting student:", e)
+    finally:
+        conn.close()
+
 def safe_int_input(prompt, min_val=None, max_val=None):
     """Prompt until a valid integer is entered (optional bounds)."""
     while True:
@@ -112,9 +152,11 @@ def main_menu():
         print("2. View All Students")
         print("3. Search Student by Roll")
         print("4. Search Students by Name")
-        print("5. Exit")
+        print("5. Update Student")
+        print("6. Delete Student")
+        print("7. Exit")
 
-        choice = input("Choose (1-5): ").strip()
+        choice = input("Choose (1-7): ").strip()
 
         if choice == '1':
             name = input("Enter name: ").strip()
@@ -146,6 +188,35 @@ def main_menu():
                 print("-------------------------------\n")
 
         elif choice == '5':
+            roll = safe_int_input("Enter roll number to update: ", min_val=1)
+            existing = find_student_by_roll(roll)
+            if not existing:
+                print("No student found with that roll number.")
+            else:
+                print(f"Current -> Name:{existing[1]} | Roll:{existing[2]} | Course:{existing[3]} | Marks:{existing[4]}")
+                new_course = input("New course (leave blank to keep): ").strip()
+                new_course = new_course if new_course != "" else None
+                marks_input = input("New marks (0-100) (leave blank to keep): ").strip()
+                new_marks = int(marks_input) if marks_input != "" else None
+                if new_marks is not None and (new_marks < 0 or new_marks > 100):
+                    print("Marks must be between 0 and 100.")
+                else:
+                    update_student(roll, new_course, new_marks)
+
+        elif choice == '6':
+            roll = safe_int_input("Enter roll number to delete: ", min_val=1)
+            existing = find_student_by_roll(roll)
+            if not existing:
+                print("No student found with that roll number.")
+            else:
+                print(f"About to delete -> Name:{existing[1]} | Roll:{existing[2]}")
+                confirm = input("Type 'yes' to confirm delete: ").strip().lower()
+                if confirm == 'yes':
+                    delete_student(roll)
+                else:
+                    print("Delete aborted.")
+
+        elif choice == '7':
             print("Goodbye 👋")
             break
         else:
